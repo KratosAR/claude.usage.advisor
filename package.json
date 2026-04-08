@@ -1,8 +1,8 @@
 {
-  "name": "claude-usage-advisor-ar",
-  "displayName": "Claude Usage Advisor AR",
-  "description": "Real-time Claude usage tracker for Argentina — peak hours, plan limits, session counter",
-  "version": "1.0.0",
+  "name": "ai-usage-advisor",
+  "displayName": "AI Usage Advisor",
+  "description": "Real-time usage tracker for Claude (Anthropic) and ChatGPT/Codex (OpenAI) — peak hours, plan limits, session counter. Works worldwide.",
+  "version": "1.1.0",
   "publisher": "YOUR_PUBLISHER_ID",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -13,42 +13,64 @@
     "vscode": "^1.85.0"
   },
   "categories": ["Other"],
-  "keywords": ["claude", "anthropic", "ai", "usage", "tracker", "argentina"],
+  "keywords": [
+    "claude", "anthropic", "chatgpt", "openai", "codex",
+    "ai", "usage", "tracker", "peak hours", "rate limit",
+    "productivity", "tokens"
+  ],
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "usageAdvisor.openPanel",
-        "title": "Claude Usage Advisor: Abrir panel"
+        "title": "AI Usage Advisor: Open panel"
       },
       {
         "command": "usageAdvisor.addMessage",
-        "title": "Claude Usage Advisor: +1 mensaje"
+        "title": "AI Usage Advisor: +1 message sent"
       },
       {
         "command": "usageAdvisor.resetTracker",
-        "title": "Claude Usage Advisor: Reiniciar ventana"
+        "title": "AI Usage Advisor: Reset window"
       }
     ],
     "configuration": {
-      "title": "Claude Usage Advisor AR",
+      "title": "AI Usage Advisor",
       "properties": {
+        "usageAdvisor.provider": {
+          "type": "string",
+          "default": "anthropic",
+          "enum": ["anthropic", "openai"],
+          "enumDescriptions": [
+            "Anthropic — Claude Free / Pro / Max",
+            "OpenAI — ChatGPT Free / Plus / Team / Pro / Codex API"
+          ],
+          "description": "AI provider you want to track"
+        },
         "usageAdvisor.plan": {
           "type": "string",
           "default": "pro",
-          "enum": ["free", "pro", "max"],
-          "enumDescriptions": [
-            "Free — ~40 msgs/día",
-            "Pro — ~45 msgs/5hs ($20/mes)",
-            "Max — ~225 msgs/5hs ($100/mes)"
-          ],
-          "description": "Tu plan de Claude actual"
+          "description": "Your current plan ID. Anthropic: free | pro | max5 | max20 — OpenAI: free | plus | team | pro | codex"
         },
         "usageAdvisor.timezone": {
           "type": "string",
-          "default": "America/Argentina/Buenos_Aires",
-          "description": "Zona horaria para el cálculo de horario pico"
+          "default": "auto",
+          "description": "Your local timezone (IANA format, e.g. America/New_York, Europe/Berlin, Asia/Tokyo). Use 'auto' to detect automatically from the system."
+        },
+        "usageAdvisor.customPeakStart": {
+          "type": "number",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 23,
+          "description": "Override peak start hour in your local time (-1 = use provider default based on PT)"
+        },
+        "usageAdvisor.customPeakEnd": {
+          "type": "number",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 23,
+          "description": "Override peak end hour in your local time (-1 = use provider default based on PT)"
         }
       }
     }

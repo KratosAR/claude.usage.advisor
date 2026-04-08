@@ -1,18 +1,15 @@
-// statusBar.ts — VS Code status bar item for peak state + message counter
+// statusBar.ts — VS Code status bar item: real-time peak state + message counter
 
 import * as vscode from 'vscode';
-import { getARTimeForZone, getPeakState, PLANS, type PlanId } from './advisor';
+import {
+  getTimeInZone, getPeakState, getPlanById, getDefaultPlanId,
+  type ProviderId, type Plan,
+} from './advisor';
 
 const STATE_ICONS: Record<string, string> = {
   peak:    '$(circle-filled)',
   offpeak: '$(pass-filled)',
   turbo:   '$(moon)',
-};
-
-const STATE_COLORS: Record<string, vscode.ThemeColor> = {
-  peak:    new vscode.ThemeColor('statusBarItem.warningBackground'),
-  offpeak: new vscode.ThemeColor('statusBarItem.prominentBackground'),
-  turbo:   new vscode.ThemeColor('statusBarItem.prominentBackground'),
 };
 
 export class UsageStatusBar {
@@ -27,10 +24,9 @@ export class UsageStatusBar {
       100,
     );
     this.item.command = 'usageAdvisor.openPanel';
-    this.item.tooltip = 'Claude Usage Advisor AR — clic para abrir panel';
+    this.item.tooltip = 'AI Usage Advisor — click to open panel';
     this.context.subscriptions.push(this.item);
 
-    // Restore persisted state
     this.msgs = context.globalState.get<number>('usageAdvisor.msgs', 0);
     const startIso = context.globalState.get<string>('usageAdvisor.windowStart');
     this.windowStart = startIso ? new Date(startIso) : new Date();
@@ -41,12 +37,11 @@ export class UsageStatusBar {
   }
 
   addMessages(n: number): void {
-    const plan = this.getPlan();
-    const limit = PLANS[plan].limit;
-    this.msgs = Math.max(0, Math.min(limit, this.msgs + n));
+    const plan = this.getActivePlan();
+    this.msgs = Math.max(0, Math.min(plan.limit, this.msgs + n));
     void this.context.globalState.update('usageAdvisor.msgs', this.msgs);
     this.update();
-    this.checkThreshold();
+    this.checkThreshold(plan);
   }
 
   reset(): void {
@@ -57,64 +52,71 @@ export class UsageStatusBar {
     this.update();
   }
 
-  getState(): { msgs: number; windowStart: Date; plan: PlanId } {
-    return { msgs: this.msgs, windowStart: this.windowStart, plan: this.getPlan() };
+  getState(): { msgs: number; windowStart: Date; provider: ProviderId; planId: string } {
+    const cfg = this.getConfig();
+    return { msgs: this.msgs, windowStart: this.windowStart, provider: cfg.provider, planId: cfg.planId };
   }
 
   dispose(): void {
-    if (this.ticker !== undefined) {
-      clearInterval(this.ticker);
-    }
+    if (this.ticker !== undefined) clearInterval(this.ticker);
     this.item.dispose();
   }
 
-  private getPlan(): PlanId {
-    return vscode.workspace.getConfiguration('usageAdvisor').get<PlanId>('plan', 'pro');
+  // ── Private ────────────────────────────────────────────────────────────────
+
+  private getConfig(): { provider: ProviderId; planId: string; timezone: string } {
+    const cfg = vscode.workspace.getConfiguration('usageAdvisor');
+    const provider = cfg.get<ProviderId>('provider', 'anthropic');
+    const rawPlanId = cfg.get<string>('plan', getDefaultPlanId(provider));
+    const timezone = this.resolveTimezone(cfg.get<string>('timezone', 'auto'));
+    return { provider, planId: rawPlanId, timezone };
   }
 
-  private getTimezone(): string {
-    return vscode.workspace.getConfiguration('usageAdvisor')
-      .get<string>('timezone', 'America/Argentina/Buenos_Aires');
+  private resolveTimezone(tz: string): string {
+    if (tz === 'auto' || !tz) {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+    return tz;
+  }
+
+  private getActivePlan(): Plan {
+    const { provider, planId } = this.getConfig();
+    return getPlanById(provider, planId) ?? { id: planId, name: planId, price: '', limit: 40, window: 'day', badge: '' };
   }
 
   private update(): void {
-    const t = getARTimeForZone(this.getTimezone());
-    const state = getPeakState(t);
-    const plan = this.getPlan();
-    const limit = PLANS[plan].limit;
-    const pct = Math.round((this.msgs / limit) * 100);
+    const { provider } = this.getConfig();
+    const plan = this.getActivePlan();
+    const state = getPeakState(provider);
+    const pct = Math.round((this.msgs / plan.limit) * 100);
 
     const icon = STATE_ICONS[state];
-    const planName = PLANS[plan].name;
-
-    this.item.text = `${icon} ${this.msgs}/${limit} · ${planName}`;
-    this.item.backgroundColor = pct >= 85 ? STATE_COLORS['peak'] : undefined;
+    this.item.text = `${icon} ${this.msgs}/${plan.limit} · ${plan.name}`;
+    this.item.backgroundColor = pct >= 85
+      ? new vscode.ThemeColor('statusBarItem.warningBackground')
+      : undefined;
   }
 
-  private checkThreshold(): void {
-    const plan = this.getPlan();
-    const limit = PLANS[plan].limit;
-    const pct = (this.msgs / limit) * 100;
+  private checkThreshold(plan: Plan): void {
+    const pct = (this.msgs / plan.limit) * 100;
 
     if (pct >= 80 && pct < 81) {
       void vscode.window.showWarningMessage(
-        `⚠️ Claude Usage Advisor: llegaste al 80% de tu límite (${this.msgs}/${limit} msgs). ¡Cuidado!`,
-        'Ver panel',
+        `⚠️ AI Usage Advisor: 80% of limit reached (${this.msgs}/${plan.limit} msgs for ${plan.name})`,
+        'Open panel',
       ).then(action => {
-        if (action === 'Ver panel') {
+        if (action === 'Open panel') {
           void vscode.commands.executeCommand('usageAdvisor.openPanel');
         }
       });
     }
 
-    if (this.msgs >= limit) {
+    if (this.msgs >= plan.limit) {
       void vscode.window.showErrorMessage(
-        `🛑 Claude Usage Advisor: límite alcanzado (${limit} msgs). Resetea la ventana cuando empiece una nueva.`,
-        'Reiniciar',
+        `🛑 AI Usage Advisor: limit reached (${plan.limit} msgs for ${plan.name}). Reset when a new window starts.`,
+        'Reset',
       ).then(action => {
-        if (action === 'Reiniciar') {
-          this.reset();
-        }
+        if (action === 'Reset') this.reset();
       });
     }
   }

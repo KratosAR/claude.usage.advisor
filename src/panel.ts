@@ -40,7 +40,7 @@ export class UsagePanel {
 
     // Messages from the webview
     this.panel.webview.onDidReceiveMessage(
-      (message: { command: string; value?: number }) => {
+      (message: { command: string; value?: number | string }) => {
         switch (message.command) {
           case 'addMsgs':
             if (typeof message.value === 'number') {
@@ -52,8 +52,12 @@ export class UsagePanel {
             statusBar.reset();
             this.refresh();
             break;
+          case 'setProvider':
+            void vscode.workspace.getConfiguration('usageAdvisor')
+              .update('provider', message.value, vscode.ConfigurationTarget.Global)
+              .then(() => this.refresh());
+            break;
           case 'setPlan':
-            // Plan is saved via VS Code settings, webview sends the value
             void vscode.workspace.getConfiguration('usageAdvisor')
               .update('plan', message.value, vscode.ConfigurationTarget.Global)
               .then(() => this.refresh());
