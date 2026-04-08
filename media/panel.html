@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Content-Security-Policy">
+  <title>Claude Usage Advisor AR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: var(--vscode-editor-background, #ffffff);
+      --bg2: var(--vscode-sideBar-background, #f5f5f3);
+      --bg3: var(--vscode-editorGroupHeader-tabsBackground, #eeede8);
+      --text: var(--vscode-editor-foreground, #1a1a18);
+      --text2: var(--vscode-descriptionForeground, #6b6b67);
+      --text3: var(--vscode-disabledForeground, #9b9b97);
+      --border: var(--vscode-widget-border, rgba(0,0,0,0.12));
+      --border2: rgba(0,0,0,0.22);
+      --radius: 10px;
+      --radius-sm: 7px;
+      --peak: #E24B4A; --peak-bg: #FCEBEB; --peak-border: #F7C1C1; --peak-text: #791F1F;
+      --off: #639922;  --off-bg: #EAF3DE;  --off-border: #C0DD97;  --off-text: #27500A;
+      --turbo: #7F77DD; --turbo-bg: #EEEDFE; --turbo-border: #CECBF6; --turbo-text: #3C3489;
+    }
+
+    body {
+      font-family: var(--vscode-font-family, 'IBM Plex Sans', system-ui, sans-serif);
+      font-size: var(--vscode-font-size, 13px);
+      background: var(--bg3);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+
+    .app { width: 100%; max-width: 400px; }
+
+    .app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; }
+    .app-header-icon { width: 34px; height: 34px; background: var(--text); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+    .app-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .app-sub   { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+    .section-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+
+    /* PLAN TABS */
+    .plan-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 1.25rem; }
+    .plan-tab { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 6px; cursor: pointer; text-align: center; transition: all .15s; }
+    .plan-tab:hover { border-color: var(--border2); }
+    .plan-tab.active.free  { border-color: #888780; border-width: 2px; }
+    .plan-tab.active.pro   { border-color: #185FA5; border-width: 2px; }
+    .plan-tab.active.max   { border-color: #534AB7; border-width: 2px; }
+    .pt-name  { font-size: 12px; font-weight: 600; color: var(--text); }
+    .pt-price { font-size: 10px; color: var(--text3); margin-top: 1px; }
+    .pt-badge { font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 10px; display: inline-block; margin-top: 4px; }
+    .free .pt-badge { background: #f1efe8; color: #444441; }
+    .pro  .pt-badge { background: #e6f1fb; color: #185FA5; }
+    .max  .pt-badge { background: #eeedfe; color: #534AB7; }
+
+    /* BANNER */
+    .banner { border-radius: var(--radius); padding: 1.1rem 1.25rem; margin-bottom: 1.25rem; border: 1px solid var(--border); transition: background .3s, border-color .3s; }
+    .banner.peak    { background: var(--peak-bg);  border-color: var(--peak-border); }
+    .banner.offpeak { background: var(--off-bg);   border-color: var(--off-border); }
+    .banner.turbo   { background: var(--turbo-bg); border-color: var(--turbo-border); }
+    .b-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .b-clock { font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 600; color: var(--text); letter-spacing: -1px; line-height: 1; }
+    .b-day { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+    .b-status { text-align: right; }
+    .b-dot-row { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+    .b-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
+    .b-dot.peak    { background: var(--peak); }
+    .b-dot.offpeak { background: var(--off); }
+    .b-dot.turbo   { background: var(--turbo); }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+    .b-label { font-size: 12px; font-weight: 600; }
+    .b-label.peak    { color: var(--peak-text); }
+    .b-label.offpeak { color: var(--off-text); }
+    .b-label.turbo   { color: var(--turbo-text); }
+    .b-countdown { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 8px; display: inline-block; margin-top: 5px; }
+    .peak    .b-countdown { color: var(--peak-text);  background: var(--peak-border); }
+    .offpeak .b-countdown { color: var(--off-text);   background: var(--off-border); }
+    .turbo   .b-countdown { color: var(--turbo-text); background: var(--turbo-border); }
+    .b-msg { font-size: 12px; line-height: 1.55; border-top: 1px solid var(--border); padding-top: 10px; }
+    .b-msg.peak    { color: var(--peak-text); }
+    .b-msg.offpeak { color: var(--off-text); }
+    .b-msg.turbo   { color: var(--turbo-text); }
+
+    /* TRACKER */
+    .tracker { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem; margin-bottom: 1.25rem; }
+    .tracker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .tracker-reset { font-size: 11px; color: var(--text3); cursor: pointer; padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text2); }
+    .tracker-reset:hover { background: var(--bg2); color: var(--text); }
+    .tracker-main { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+    .tracker-count { font-family: 'IBM Plex Mono', monospace; font-size: 34px; font-weight: 600; color: var(--text); line-height: 1; }
+    .tracker-of { font-size: 12px; color: var(--text2); }
+    .bar-wrap { background: var(--bg3); border-radius: 4px; height: 5px; overflow: hidden; margin-bottom: 8px; }
+    .bar { height: 100%; border-radius: 4px; transition: width .4s ease, background .3s; }
+    .bar.safe   { background: #639922; }
+    .bar.warn   { background: #BA7517; }
+    .bar.danger { background: #E24B4A; }
+    .tracker-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 12px; }
+    .tracker-btns { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 6px; }
+    .btn { padding: 7px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border2); background: var(--bg2); font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text); transition: all .15s; font-family: inherit; }
+    .btn:hover { background: var(--bg3); }
+    .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .btn.primary:hover { opacity: .85; }
+    .tracker-window { font-size: 11px; color: var(--text3); text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+    /* TIPS */
+    .tips { background: var(--bg2); border-radius: var(--radius); padding: .9rem 1.1rem; margin-bottom: 1rem; }
+    .tip { display: flex; gap: 10px; font-size: 12px; color: var(--text); margin-bottom: 6px; line-height: 1.45; }
+    .tip:last-child { margin-bottom: 0; }
+    .tip-icon { font-size: 13px; width: 18px; flex-shrink: 0; }
+
+    .footer { font-size: 10px; color: var(--text3); line-height: 1.7; text-align: center; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div class="app-header-icon">🧠</div>
+    <div>
+      <div class="app-title">Usage Advisor AR</div>
+      <div class="app-sub" id="app-sub">Claude · Argentina (UTC-3)</div>
+    </div>
+  </div>
+
+  <div class="section-label">Tu plan actual</div>
+  <div class="plan-tabs">
+    <div class="plan-tab free" id="tab-free" onclick="setPlan('free')">
+      <div class="pt-name">Free</div><div class="pt-price">$0/mes</div><div class="pt-badge">~40 msgs/día</div>
+    </div>
+    <div class="plan-tab pro active" id="tab-pro" onclick="setPlan('pro')">
+      <div class="pt-name">Pro</div><div class="pt-price">$20/mes</div><div class="pt-badge">~45 msgs/5hs</div>
+    </div>
+    <div class="plan-tab max" id="tab-max" onclick="setPlan('max')">
+      <div class="pt-name">Max</div><div class="pt-price">$100/mes</div><div class="pt-badge">~225 msgs/5hs</div>
+    </div>
+  </div>
+
+  <div class="banner" id="banner">
+    <div class="b-top">
+      <div>
+        <div class="b-clock" id="b-clock">--:--:--</div>
+        <div class="b-day" id="b-day"></div>
+      </div>
+      <div class="b-status">
+        <div class="b-dot-row"><div class="b-dot" id="b-dot"></div><span class="b-label" id="b-label"></span></div>
+        <div class="b-countdown" id="b-countdown"></div>
+      </div>
+    </div>
+    <p class="b-msg" id="b-msg"></p>
+  </div>
+
+  <div class="tracker">
+    <div class="tracker-header">
+      <div class="section-label" style="margin:0">Tracker de sesión</div>
+      <button class="tracker-reset" onclick="resetTracker()">Reiniciar ventana</button>
+    </div>
+    <div class="tracker-main">
+      <div class="tracker-count" id="t-count">0</div>
+      <div class="tracker-of" id="t-of">/ 45 msgs</div>
+    </div>
+    <div class="bar-wrap"><div class="bar safe" id="t-bar" style="width:0%"></div></div>
+    <div class="tracker-meta">
+      <span id="t-rem">45 restantes</span>
+      <span id="t-pct">0% usado</span>
+    </div>
+    <div class="tracker-btns">
+      <button class="btn" onclick="addMsgs(-1)">− 1</button>
+      <button class="btn primary" onclick="addMsgs(1)">+ 1 mensaje enviado</button>
+      <button class="btn" onclick="addMsgs(5)">+ 5</button>
+    </div>
+    <div class="tracker-window">Ventana iniciada a las <span id="t-started">--:--</span> · Plan <span id="t-plan-name">Pro</span></div>
+  </div>
+
+  <div class="tips" id="tips-box">
+    <div class="section-label" id="tips-title">Tips</div>
+    <div id="tips-list"></div>
+  </div>
+
+  <p class="footer">
+    Límite semanal Pro/Max solo afecta al top 5% de usuarios.<br>
+    Pico AR: lun-vie 10:00–16:00 hs · Datos volátiles (sesión actual)
+  </p>
+</div>
+
+<script nonce="{{nonce}}">
+// ── VS Code Webview bridge ──────────────────────────────────────────
+const vscode = acquireVsCodeApi();
+
+const PLANS = {
+  free: { limit: 40,  window: 'día',  name: 'Free' },
+  pro:  { limit: 45,  window: '5 hs', name: 'Pro'  },
+  max:  { limit: 225, window: '5 hs', name: 'Max'  }
+};
+
+const DAYS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const TIPS_DATA = {
+  peak: {
+    label: 'Horario pico', msg: 'Tu cuota se consume MÁS RÁPIDO ahora. Usá prompts completos, no mandes mensajitos cortos!',
+    title: 'Tips para horario pico',
+    tips: [['⚡','Abrí chat nuevo para cada tema (menos historial = menos tokens)'],['📝','Juntá todo en UN solo mensaje en vez de ir de a poco'],['🤖','Usá Sonnet para el día a día (Opus consume 3-5x más cuota)'],['⏰','Guardá sesiones intensas para después de las 16:00 hs']]
+  },
+  offpeak: {
+    label: 'Fuera de pico', msg: '¡Cuota a ritmo normal. Dale con todo, la ventana de 5 horas está a tu favor!',
+    title: 'Momento ideal para trabajar',
+    tips: [['🚀','Buen momento para proyectos con archivos grandes o código largo'],['💎','Podés usar Opus sin tanto costo de cuota'],['📂','Ideal para subir contexto extenso y organizar proyectos']]
+  },
+  turbo: {
+    label: 'Modo turbo', msg: '¡Madrugada o finde! Sin restricciones extra. El mejor momento para sesiones intensas.',
+    title: 'Aprovechá el modo turbo',
+    tips: [['🌙','Ideal para sesiones largas, evals o proyectos grandes'],['💎','Usá Opus libremente, es el mejor momento'],['⚡','Ventana de 5hs corre sin el multiplicador de pico']]
+  }
+};
+
+var plan = 'pro';
+var msgs = 0;
+var windowStart = new Date();
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function getARTime() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+}
+
+function getState(t) {
+  var h = t.getHours(), day = t.getDay(), mins = h * 60 + t.getMinutes();
+  if (day === 0 || day === 6 || h < 8) return 'turbo';
+  if (mins >= 600 && mins < 960) return 'peak';
+  return 'offpeak';
+}
+
+function minutesUntil(t, th, tm) {
+  var cur = t.getHours() * 60 + t.getMinutes();
+  var diff = th * 60 + tm - cur;
+  if (diff <= 0) diff += 1440;
+  return diff;
+}
+
+function fmtDiff(m) {
+  return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h ' + pad(m % 60) + 'min';
+}
+
+function countdown(t) {
+  var state = getState(t);
+  if (state === 'peak') return 'Pico termina en ' + fmtDiff(minutesUntil(t, 16, 0));
+  if (state === 'offpeak') return (t.getHours()*60+t.getMinutes()<600) ? 'Pico empieza en '+fmtDiff(minutesUntil(t,10,0)) : 'Próximo pico: mañana 10:00 hs';
+  var d = t.getDay();
+  return d===0?'Sin pico hoy, es domingo':d===6?'Sin pico hoy, es sábado':'Pico empieza en '+fmtDiff(minutesUntil(t,10,0));
+}
+
+function setText(id, v) { var e=document.getElementById(id); if(e) e.textContent=v; }
+
+function setPlan(p) {
+  plan = p;
+  ['free','pro','max'].forEach(function(x) {
+    var el = document.getElementById('tab-'+x);
+    if (el) el.classList.toggle('active', x===p);
+  });
+  renderTracker();
+  vscode.postMessage({ command: 'setPlan', value: p });
+}
+
+function addMsgs(n) {
+  vscode.postMessage({ command: 'addMsgs', value: n });
+}
+
+function resetTracker() {
+  vscode.postMessage({ command: 'reset' });
+}
+
+function renderTracker() {
+  var lim = PLANS[plan].limit;
+  var pct = Math.round((msgs / lim) * 100);
+  var rem = lim - msgs;
+  setText('t-count', msgs);
+  setText('t-of', '/ ' + lim + ' msgs');
+  setText('t-rem', rem + ' restantes');
+  setText('t-pct', pct + '% usado');
+  setText('t-plan-name', PLANS[plan].name);
+  var bar = document.getElementById('t-bar');
+  if (bar) { bar.style.width = pct + '%'; bar.className = 'bar ' + (pct<60?'safe':pct<85?'warn':'danger'); }
+  var ws = windowStart;
+  setText('t-started', pad(ws.getHours())+':'+pad(ws.getMinutes()));
+}
+
+function render() {
+  var t = getARTime();
+  var state = getState(t);
+  var cfg = TIPS_DATA[state];
+  setText('b-clock', pad(t.getHours())+':'+pad(t.getMinutes())+':'+pad(t.getSeconds()));
+  setText('b-day', DAYS[t.getDay()]);
+  var banner = document.getElementById('banner');
+  if (banner) banner.className = 'banner ' + state;
+  var dot = document.getElementById('b-dot');
+  if (dot) dot.className = 'b-dot ' + state;
+  var label = document.getElementById('b-label');
+  if (label) { label.className = 'b-label ' + state; label.textContent = cfg.label; }
+  setText('b-countdown', countdown(t));
+  var msgEl = document.getElementById('b-msg');
+  if (msgEl) { msgEl.className = 'b-msg ' + state; msgEl.textContent = cfg.msg; }
+  setText('tips-title', cfg.title);
+  var tipsList = document.getElementById('tips-list');
+  if (tipsList) {
+    tipsList.innerHTML = cfg.tips.map(function(tip) {
+      return '<div class="tip"><span class="tip-icon">'+tip[0]+'</span><span>'+tip[1]+'</span></div>';
+    }).join('');
+  }
+}
+
+// Receive state updates from extension host
+window.addEventListener('message', function(event) {
+  var message = event.data;
+  if (message.command === 'update') {
+    var state = message.state;
+    msgs = state.msgs;
+    plan = state.plan;
+    windowStart = new Date(state.windowStart);
+    // Sync plan tabs
+    ['free','pro','max'].forEach(function(x) {
+      var el = document.getElementById('tab-'+x);
+      if (el) el.classList.toggle('active', x===plan);
+    });
+    renderTracker();
+  }
+});
+
+render();
+renderTracker();
+setInterval(render, 1000);
+</script>
+</body>
+</html>

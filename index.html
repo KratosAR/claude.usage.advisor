@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude Usage Advisor AR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #eeede8;
+      --text: #1a1a18;
+      --text2: #6b6b67;
+      --text3: #9b9b97;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --peak: #E24B4A; --peak-bg: #FCEBEB; --peak-border: #F7C1C1; --peak-text: #791F1F;
+      --off: #639922;  --off-bg: #EAF3DE;  --off-border: #C0DD97;  --off-text: #27500A;
+      --turbo: #7F77DD; --turbo-bg: #EEEDFE; --turbo-border: #CECBF6; --turbo-text: #3C3489;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a; --bg2: #242422; --bg3: #2c2c2a;
+        --text: #f0efe8; --text2: #9b9b97; --text3: #6b6b67;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --peak-bg: #2a1414; --peak-border: #5a2020; --peak-text: #f09595;
+        --off-bg: #162210; --off-border: #2d4a18; --off-text: #C0DD97;
+        --turbo-bg: #1a1830; --turbo-border: #3c3489; --turbo-text: #AFA9EC;
+      }
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      background: var(--bg3);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .app { width: 100%; max-width: 420px; }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.25rem;
+    }
+    .app-header-icon {
+      width: 36px; height: 36px;
+      background: var(--text);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .app-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .app-sub   { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--text3); margin-bottom: 8px;
+    }
+
+    /* PLAN TABS */
+    .plan-tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 1.25rem; }
+    .plan-tab {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 6px;
+      cursor: pointer; text-align: center; transition: all .15s;
+    }
+    .plan-tab:hover { border-color: var(--border2); }
+    .plan-tab.active.free  { border-color: #888780; border-width: 2px; }
+    .plan-tab.active.pro   { border-color: #185FA5; border-width: 2px; }
+    .plan-tab.active.max   { border-color: #534AB7; border-width: 2px; }
+    .pt-name  { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pt-price { font-size: 10px; color: var(--text3); margin-top: 1px; }
+    .pt-badge {
+      font-size: 10px; font-weight: 500; padding: 2px 6px;
+      border-radius: 10px; display: inline-block; margin-top: 4px;
+    }
+    .free .pt-badge  { background: #f1efe8; color: #444441; }
+    .pro  .pt-badge  { background: #e6f1fb; color: #185FA5; }
+    .max  .pt-badge  { background: #eeedfe; color: #534AB7; }
+
+    /* BANNER */
+    .banner {
+      border-radius: var(--radius); padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem; border: 1px solid var(--border);
+      transition: background .3s, border-color .3s;
+    }
+    .banner.peak   { background: var(--peak-bg);  border-color: var(--peak-border); }
+    .banner.offpeak{ background: var(--off-bg);   border-color: var(--off-border); }
+    .banner.turbo  { background: var(--turbo-bg); border-color: var(--turbo-border); }
+    .b-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .b-clock {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 34px; font-weight: 600; color: var(--text); letter-spacing: -1px; line-height: 1;
+    }
+    .b-day { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+    .b-status { text-align: right; }
+    .b-dot-row { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+    .b-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s infinite; }
+    .b-dot.peak   { background: var(--peak); }
+    .b-dot.offpeak{ background: var(--off); }
+    .b-dot.turbo  { background: var(--turbo); }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+    .b-label { font-size: 12px; font-weight: 600; }
+    .b-label.peak   { color: var(--peak-text); }
+    .b-label.offpeak{ color: var(--off-text); }
+    .b-label.turbo  { color: var(--turbo-text); }
+    .b-countdown {
+      font-size: 10px; font-weight: 500; padding: 2px 7px;
+      border-radius: 8px; display: inline-block; margin-top: 5px;
+    }
+    .peak    .b-countdown { color: var(--peak-text);  background: var(--peak-border); }
+    .offpeak .b-countdown { color: var(--off-text);   background: var(--off-border); }
+    .turbo   .b-countdown { color: var(--turbo-text); background: var(--turbo-border); }
+    .b-msg {
+      font-size: 13px; line-height: 1.55;
+      border-top: 1px solid var(--border); padding-top: 10px;
+    }
+    .b-msg.peak   { color: var(--peak-text); }
+    .b-msg.offpeak{ color: var(--off-text); }
+    .b-msg.turbo  { color: var(--turbo-text); }
+
+    /* TRACKER */
+    .tracker {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .tracker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .tracker-reset {
+      font-size: 11px; color: var(--text3); cursor: pointer;
+      padding: 3px 8px; border: 1px solid var(--border); border-radius: 6px; background: transparent;
+    }
+    .tracker-reset:hover { background: var(--bg2); color: var(--text); }
+    .tracker-main { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+    .tracker-count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 38px; font-weight: 600; color: var(--text); line-height: 1;
+    }
+    .tracker-of { font-size: 13px; color: var(--text2); }
+    .bar-wrap { background: var(--bg3); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 8px; }
+    .bar { height: 100%; border-radius: 4px; transition: width .4s ease, background .3s; }
+    .bar.safe   { background: #639922; }
+    .bar.warn   { background: #BA7517; }
+    .bar.danger { background: #E24B4A; }
+    .tracker-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 12px; }
+    .tracker-btns { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 6px; }
+    .btn {
+      padding: 8px 4px; border-radius: var(--radius-sm); border: 1px solid var(--border2);
+      background: var(--bg2); font-size: 13px; font-weight: 500; cursor: pointer;
+      color: var(--text); transition: all .15s; font-family: inherit;
+    }
+    .btn:hover { background: var(--bg3); }
+    .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .btn.primary:hover { opacity: .85; }
+    .tracker-window {
+      font-size: 11px; color: var(--text3); text-align: center;
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    }
+
+    /* TIPS */
+    .tips { background: var(--bg2); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .tip { display: flex; gap: 10px; font-size: 13px; color: var(--text); margin-bottom: 7px; line-height: 1.45; }
+    .tip:last-child { margin-bottom: 0; }
+    .tip-icon { font-size: 14px; width: 20px; flex-shrink: 0; }
+
+    .footer { font-size: 10px; color: var(--text3); line-height: 1.7; text-align: center; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div class="app-header-icon">🧠</div>
+    <div>
+      <div class="app-title">Usage Advisor AR</div>
+      <div class="app-sub">Claude · Argentina (UTC-3)</div>
+    </div>
+  </div>
+
+  <div class="section-label">Tu plan actual</div>
+  <div class="plan-tabs">
+    <div class="plan-tab free" id="tab-free" onclick="setPlan('free')">
+      <div class="pt-name">Free</div>
+      <div class="pt-price">$0/mes</div>
+      <div class="pt-badge">~40 msgs/dia</div>
+    </div>
+    <div class="plan-tab pro active" id="tab-pro" onclick="setPlan('pro')">
+      <div class="pt-name">Pro</div>
+      <div class="pt-price">$20/mes</div>
+      <div class="pt-badge">~45 msgs/5hs</div>
+    </div>
+    <div class="plan-tab max" id="tab-max" onclick="setPlan('max')">
+      <div class="pt-name">Max</div>
+      <div class="pt-price">$100/mes</div>
+      <div class="pt-badge">~225 msgs/5hs</div>
+    </div>
+  </div>
+
+  <div class="banner" id="banner">
+    <div class="b-top">
+      <div>
+        <div class="b-clock" id="b-clock">--:--:--</div>
+        <div class="b-day" id="b-day"></div>
+      </div>
+      <div class="b-status">
+        <div class="b-dot-row"><div class="b-dot" id="b-dot"></div><span class="b-label" id="b-label"></span></div>
+        <div class="b-countdown" id="b-countdown"></div>
+      </div>
+    </div>
+    <p class="b-msg" id="b-msg"></p>
+  </div>
+
+  <div class="tracker">
+    <div class="tracker-header">
+      <div class="section-label" style="margin:0">Tracker de sesion</div>
+      <button class="tracker-reset" onclick="resetTracker()">Reiniciar ventana</button>
+    </div>
+    <div class="tracker-main">
+      <div class="tracker-count" id="t-count">0</div>
+      <div class="tracker-of" id="t-of">/ 45 msgs</div>
+    </div>
+    <div class="bar-wrap"><div class="bar safe" id="t-bar" style="width:0%"></div></div>
+    <div class="tracker-meta">
+      <span id="t-rem">45 restantes</span>
+      <span id="t-pct">0% usado</span>
+    </div>
+    <div class="tracker-btns">
+      <button class="btn" onclick="addMsgs(-1)">− 1</button>
+      <button class="btn primary" onclick="addMsgs(1)">+ 1 mensaje enviado</button>
+      <button class="btn" onclick="addMsgs(5)">+ 5</button>
+    </div>
+    <div class="tracker-window">Ventana iniciada a las <span id="t-started">--:--</span> · Plan <span id="t-plan-name">Pro</span></div>
+  </div>
+
+  <div class="tips" id="tips-box">
+    <div class="section-label" id="tips-title">Tips</div>
+    <div id="tips-list"></div>
+  </div>
+
+  <p class="footer">
+    Limite semanal Pro/Max solo afecta al top 5% de usuarios.<br>
+    Pico AR: lun-vie 10:00–16:00 hs · Datos volatiles (sesion actual)<br>
+    <a href="https://github.com/TU_USUARIO/usage-advisor-ar" target="_blank">github.com · usage-advisor-ar</a>
+  </p>
+</div>
+
+<script src="src/app.js"></script>
+</body>
+</html>

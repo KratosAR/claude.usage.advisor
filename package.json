@@ -1,0 +1,70 @@
+{
+  "name": "claude-usage-advisor-ar",
+  "displayName": "Claude Usage Advisor AR",
+  "description": "Real-time Claude usage tracker for Argentina — peak hours, plan limits, session counter",
+  "version": "1.0.0",
+  "publisher": "YOUR_PUBLISHER_ID",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1c1c1a",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["claude", "anthropic", "ai", "usage", "tracker", "argentina"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "usageAdvisor.openPanel",
+        "title": "Claude Usage Advisor: Abrir panel"
+      },
+      {
+        "command": "usageAdvisor.addMessage",
+        "title": "Claude Usage Advisor: +1 mensaje"
+      },
+      {
+        "command": "usageAdvisor.resetTracker",
+        "title": "Claude Usage Advisor: Reiniciar ventana"
+      }
+    ],
+    "configuration": {
+      "title": "Claude Usage Advisor AR",
+      "properties": {
+        "usageAdvisor.plan": {
+          "type": "string",
+          "default": "pro",
+          "enum": ["free", "pro", "max"],
+          "enumDescriptions": [
+            "Free — ~40 msgs/día",
+            "Pro — ~45 msgs/5hs ($20/mes)",
+            "Max — ~225 msgs/5hs ($100/mes)"
+          ],
+          "description": "Tu plan de Claude actual"
+        },
+        "usageAdvisor.timezone": {
+          "type": "string",
+          "default": "America/Argentina/Buenos_Aires",
+          "description": "Zona horaria para el cálculo de horario pico"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}
